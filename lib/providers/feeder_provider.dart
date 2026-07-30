@@ -6,18 +6,14 @@ import 'package:web_socket_channel/io.dart';
 
 import '../models/device_models.dart';
 import '../services/backend_api.dart';
+import '../services/env_service.dart';
 
 class FeederProvider extends ChangeNotifier {
   static const _urlKey = 'backend_url';
   static const _tokenKey = 'backend_api_token';
-  static const _defaultUrl = String.fromEnvironment(
-    'BACKEND_URL',
-    defaultValue: 'http://100.72.169.109:7890',
-  );
-  static const _defaultToken = String.fromEnvironment('BACKEND_API_TOKEN');
 
-  String backendUrl = _defaultUrl;
-  String apiToken = _defaultToken;
+  String backendUrl = EnvService.backendUrl;
+  String apiToken = EnvService.backendApiToken;
   MasterStatus? master;
   CameraStatus? camera;
   ClassificationResult? classification;
@@ -37,8 +33,8 @@ class FeederProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     final preferences = await SharedPreferences.getInstance();
-    backendUrl = preferences.getString(_urlKey) ?? _defaultUrl;
-    apiToken = preferences.getString(_tokenKey) ?? _defaultToken;
+    backendUrl = preferences.getString(_urlKey) ?? EnvService.backendUrl;
+    apiToken = preferences.getString(_tokenKey) ?? EnvService.backendApiToken;
     initialized = true;
     notifyListeners();
     if (apiToken.isNotEmpty) await refreshAll();

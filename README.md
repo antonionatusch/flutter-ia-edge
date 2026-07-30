@@ -15,9 +15,7 @@ Android-first Flutter dashboard for the IA Edge pet feeder. It uses Provider and
 Connect an Android device with USB debugging enabled, then run:
 
 ```bash
-source .env && flutter run \
-  --dart-define=BACKEND_URL=$BACKEND_URL \
-  --dart-define=BACKEND_API_TOKEN=$BACKEND_API_TOKEN
+flutter run
 ```
 
 Copy `.env.example` to `.env` and fill in your values:
@@ -26,7 +24,7 @@ Copy `.env.example` to `.env` and fill in your values:
 cp .env.example .env
 ```
 
-The URL and token can also be entered later from the Settings page. Android cleartext HTTP access is enabled because the backend currently runs over HTTP on the trusted LAN/Tailscale network.
+The `.env` file is loaded at runtime via `flutter_dotenv`. The URL and token can also be entered later from the Settings page. Android cleartext HTTP access is enabled because the backend currently runs over HTTP on the trusted LAN/Tailscale network.
 
 ## Verify
 

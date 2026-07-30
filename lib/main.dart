@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/feeder_provider.dart';
 import 'screens/home_shell.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load();
   runApp(const FeederApp());
 }
 
