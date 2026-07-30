@@ -1,0 +1,148 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/feeder_provider.dart';
+import '../widgets/common_widgets.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _urlController;
+  late final TextEditingController _tokenController;
+  bool _hideToken = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final feeder = context.read<FeederProvider>();
+    _urlController = TextEditingController(text: feeder.backendUrl);
+    _tokenController = TextEditingController(text: feeder.apiToken);
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _tokenController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feeder = context.watch<FeederProvider>();
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      children: [
+        Text(
+          'Connection',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Backend access for this device',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 18),
+        if (feeder.error != null) ...[
+          ErrorBanner(message: feeder.error!),
+          const SizedBox(height: 14),
+        ],
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SectionHeading(
+                    icon: Icons.dns_outlined,
+                    title: 'FastAPI backend',
+                  ),
+                  const SizedBox(height: 18),
+                  TextFormField(
+                    controller: _urlController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Backend URL',
+                      hintText: 'http://100.x.x.x:7890',
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                    validator: (value) {
+                      final uri = Uri.tryParse(value?.trim() ?? '');
+                      if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+                        return 'Enter a complete http:// or https:// URL';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _tokenController,
+                    obscureText: _hideToken,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: InputDecoration(
+                      labelText: 'Backend API token',
+                      prefixIcon: const Icon(Icons.key),
+                      suffixIcon: IconButton(
+                        onPressed: () =>
+                            setState(() => _hideToken = !_hideToken),
+                        icon: Icon(
+                          _hideToken ? Icons.visibility : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Token is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: feeder.loading
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            await feeder.saveSettings(
+                              _urlController.text,
+                              _tokenController.text,
+                            );
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  feeder.error == null
+                                      ? 'Connection saved and verified'
+                                      : 'Saved, but verification failed',
+                                ),
+                              ),
+                            );
+                          },
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('Save and test'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'The token is stored in Android app preferences. For development, it can also be injected with --dart-define=BACKEND_API_TOKEN=...',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
