@@ -5,18 +5,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_ia_edge/main.dart';
 
 void main() {
-  testWidgets('shows the dashboard and primary navigation', (tester) async {
+  testWidgets('muestra el panel y la navegación principal', (tester) async {
     SharedPreferences.setMockInitialValues({});
     dotenv.loadFromString(
-      envString: 'BACKEND_URL=http://localhost:7890\nBACKEND_API_TOKEN=test',
+      envString: 'BACKEND_URL=http://localhost:7890\nBACKEND_API_TOKEN=',
     );
 
     await tester.pumpWidget(const FeederApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Pet feeder'), findsOneWidget);
-    expect(find.text('Status'), findsOneWidget);
-    expect(find.text('Camera'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Comedero inteligente'), findsOneWidget);
+    expect(find.text('Estado'), findsOneWidget);
+    expect(find.text('Cámara'), findsOneWidget);
+    expect(find.text('Configuración'), findsOneWidget);
   });
 }

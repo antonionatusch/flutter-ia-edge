@@ -26,13 +26,13 @@ class DashboardScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Pet feeder',
+                          'Comedero inteligente',
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Edge system control',
+                          'Control del sistema IA Edge',
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(
                                 color: Theme.of(
@@ -57,8 +57,13 @@ class DashboardScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
             sliver: SliverList.list(
               children: [
-                if (feeder.error != null) ...[
-                  ErrorBanner(message: feeder.error!),
+                if (feeder.connectionMessage != null) ...[
+                  ConnectionBanner(
+                    message: feeder.connectionMessage!,
+                    loading:
+                        feeder.connectionPhase == ConnectionPhase.connecting,
+                    success: feeder.connectionPhase == ConnectionPhase.success,
+                  ),
                   const SizedBox(height: 14),
                 ],
                 _ModeCard(master: feeder.master, loading: feeder.loading),
@@ -89,7 +94,7 @@ class _ModeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionHeading(icon: Icons.tune, title: 'Operating mode'),
+            const SectionHeading(icon: Icons.tune, title: 'Modo de operación'),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -103,12 +108,12 @@ class _ModeCard extends StatelessWidget {
                   ButtonSegment(
                     value: 'manual_on',
                     icon: Icon(Icons.power),
-                    label: Text('On'),
+                    label: Text('Encender'),
                   ),
                   ButtonSegment(
                     value: 'manual_off',
                     icon: Icon(Icons.power_off),
-                    label: Text('Off'),
+                    label: Text('Apagar'),
                   ),
                 ],
                 selected: {master?.mode ?? 'automatic'},
@@ -122,8 +127,8 @@ class _ModeCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               master?.relayEnabled == true
-                  ? 'Camera and fan are powered'
-                  : 'Camera and fan are powered off',
+                  ? 'La cámara y el ventilador están encendidos'
+                  : 'La cámara y el ventilador están apagados',
               style: TextStyle(
                 color: master?.relayEnabled == true
                     ? Theme.of(context).colorScheme.primary
@@ -146,19 +151,17 @@ class _MasterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StatusCard(
-      title: 'ESP32 master',
+      title: 'ESP32 maestro',
       icon: Icons.memory,
       online: status != null,
       rows: [
-        StatusRow('Local time', status?.localTime ?? 'Unavailable'),
+        StatusRow('Hora local', status?.localTime ?? 'No disponible'),
         StatusRow('Wi-Fi', status == null ? '--' : '${status!.wifiRssi} dBm'),
-        StatusRow('Last reset', status?.resetReason ?? '--'),
-        StatusRow('Uptime', formatUptime(status?.uptimeMs)),
+        StatusRow('Último reinicio', translateResetReason(status?.resetReason)),
+        StatusRow('Tiempo activo', formatUptime(status?.uptimeMs)),
         StatusRow(
-          'Clock',
-          status?.timeSynchronized == true
-              ? 'Synchronized'
-              : 'Not synchronized',
+          'Reloj',
+          status?.timeSynchronized == true ? 'Sincronizado' : 'No sincronizado',
         ),
       ],
     );
@@ -178,18 +181,21 @@ class _CameraCard extends StatelessWidget {
       online: status != null && status!.cameraReady,
       rows: [
         StatusRow(
-          'Model',
-          status?.modelReady == true ? 'Ready' : 'Unavailable',
+          'Modelo',
+          status?.modelReady == true ? 'Listo' : 'No disponible',
         ),
         StatusRow('Wi-Fi', status == null ? '--' : '${status!.wifiRssi} dBm'),
         StatusRow(
-          'Memory',
+          'Memoria',
           status == null
               ? '--'
               : '${(status!.freePsram / 1048576).toStringAsFixed(1)} MB PSRAM',
         ),
-        StatusRow('Stream', status?.streamActive == true ? 'Active' : 'Idle'),
-        StatusRow('Uptime', formatUptime(status?.uptimeMs)),
+        StatusRow(
+          'Transmisión',
+          status?.streamActive == true ? 'Activa' : 'Inactiva',
+        ),
+        StatusRow('Tiempo activo', formatUptime(status?.uptimeMs)),
       ],
     );
   }

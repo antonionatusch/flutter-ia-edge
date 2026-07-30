@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import '../models/device_models.dart';
@@ -53,8 +54,10 @@ class BackendApi {
               .timeout(const Duration(seconds: 15)),
         _ => throw ArgumentError('Unsupported method: $method'),
       };
-    } catch (error) {
-      throw BackendException('Connection failed: $error');
+    } catch (_) {
+      throw const BackendException(
+        'No se pudo conectar con el servidor. Revisa la red e inténtalo nuevamente.',
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -64,12 +67,35 @@ class BackendApi {
   }
 
   String _errorMessage(http.Response response) {
+    String? reason;
     try {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return 'HTTP ${response.statusCode}: ${body['detail']}';
-    } catch (_) {
-      return 'HTTP ${response.statusCode}: ${response.reasonPhrase}';
-    }
+      final detail = body['detail'];
+      reason = detail is Map<String, dynamic>
+          ? detail['reason']?.toString()
+          : detail?.toString();
+    } catch (_) {}
+
+    return switch (reason) {
+      'invalid_api_key' =>
+        'El token de acceso no es válido. Revísalo en Configuración.',
+      'timeout' =>
+        'El dispositivo tardó demasiado en responder. Inténtalo nuevamente.',
+      'debug_mode_required' =>
+        'La cámara solo está disponible durante una ronda activa o en modo manual encendido.',
+      'camera_not_ready' => 'La cámara todavía se está iniciando.',
+      'device_busy' => 'La cámara está ocupada. Inténtalo en unos segundos.',
+      'no_cached_frame' => 'Primero debes capturar una imagen.',
+      'capture_failed' => 'No se pudo capturar la imagen.',
+      'model_not_ready' => 'El modelo de clasificación no está disponible.',
+      'All connection attempts failed' =>
+        'No se pudo conectar con el dispositivo en la red local.',
+      _ when response.statusCode == 401 =>
+        'El token de acceso no es válido. Revísalo en Configuración.',
+      _ when response.statusCode == 502 || response.statusCode == 504 =>
+        'El servidor está activo, pero no pudo comunicarse con el dispositivo.',
+      _ => 'Ocurrió un problema al comunicarse con el servidor.',
+    };
   }
 
   Future<MasterStatus> masterStatus() async =>
@@ -77,6 +103,9 @@ class BackendApi {
 
   Future<CameraStatus> cameraStatus() async =>
       CameraStatus.fromJson(await _jsonRequest('GET', '/api/v1/camera/status'));
+
+  Future<SystemStatus> systemStatus() async =>
+      SystemStatus.fromJson(await _jsonRequest('GET', '/api/v1/system/status'));
 
   Future<MasterStatus> setMode(String mode) async => MasterStatus.fromJson(
     await _jsonRequest('POST', '/api/v1/master/mode', body: {'mode': mode}),
@@ -88,8 +117,10 @@ class BackendApi {
       response = await _client
           .get(_uri('/api/v1/camera/capture'), headers: _headers)
           .timeout(const Duration(seconds: 15));
-    } catch (error) {
-      throw BackendException('Capture failed: $error');
+    } catch (_) {
+      throw const BackendException(
+        'No se pudo capturar la imagen. Revisa la conexión e inténtalo nuevamente.',
+      );
     }
     if (response.statusCode != 200) {
       throw BackendException(_errorMessage(response));

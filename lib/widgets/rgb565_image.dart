@@ -33,7 +33,7 @@ class _Rgb565ImageState extends State<Rgb565Image> {
     final rgba = Uint8List(320 * 240 * 4);
     for (var pixel = 0; pixel < 320 * 240; pixel++) {
       final source = pixel * 2;
-      final value = widget.bytes[source] | (widget.bytes[source + 1] << 8);
+      final value = (widget.bytes[source] << 8) | widget.bytes[source + 1];
       final destination = pixel * 4;
       rgba[destination] = ((value >> 11) & 0x1f) * 255 ~/ 31;
       rgba[destination + 1] = ((value >> 5) & 0x3f) * 255 ~/ 63;

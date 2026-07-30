@@ -104,3 +104,30 @@ class CaptureResult {
   final Uint8List bytes;
   final String? frameId;
 }
+
+class SystemStatus {
+  const SystemStatus({
+    required this.master,
+    required this.camera,
+    this.masterError,
+    this.cameraError,
+  });
+
+  factory SystemStatus.fromJson(Map<String, dynamic> json) {
+    final masterService = json['master'] as Map<String, dynamic>? ?? const {};
+    final cameraService = json['camera'] as Map<String, dynamic>? ?? const {};
+    final masterData = masterService['data'] as Map<String, dynamic>?;
+    final cameraData = cameraService['data'] as Map<String, dynamic>?;
+    return SystemStatus(
+      master: masterData == null ? null : MasterStatus.fromJson(masterData),
+      camera: cameraData == null ? null : CameraStatus.fromJson(cameraData),
+      masterError: masterService['error']?.toString(),
+      cameraError: cameraService['error']?.toString(),
+    );
+  }
+
+  final MasterStatus? master;
+  final CameraStatus? camera;
+  final String? masterError;
+  final String? cameraError;
+}

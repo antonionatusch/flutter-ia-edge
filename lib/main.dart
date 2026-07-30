@@ -19,7 +19,7 @@ class FeederApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => FeederProvider()..initialize(),
       child: MaterialApp(
-        title: 'IA Edge Feeder',
+        title: 'Comedero IA Edge',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(

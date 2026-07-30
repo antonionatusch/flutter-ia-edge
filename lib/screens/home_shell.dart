@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/feeder_provider.dart';
 import 'camera_screen.dart';
 import 'dashboard_screen.dart';
 import 'settings_screen.dart';
@@ -18,31 +20,60 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final feeder = context.watch<FeederProvider>();
+    if (_index == 1 && feeder.master != null && !feeder.cameraAccessAllowed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _index != 1) return;
+        feeder.stopStream();
+        setState(() => _index = 0);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(feeder.cameraAccessMessage)));
+      });
+    }
     return Scaffold(
       body: SafeArea(
         child: IndexedStack(index: _index, children: _screens),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (index) => setState(() => _index = index),
+        onDestinationSelected: (index) => _selectDestination(index),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
-            label: 'Status',
+            label: 'Estado',
           ),
           NavigationDestination(
             icon: Icon(Icons.videocam_outlined),
             selectedIcon: Icon(Icons.videocam),
-            label: 'Camera',
+            label: 'Cámara',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            label: 'Configuración',
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _selectDestination(int index) async {
+    if (index != 1) {
+      setState(() => _index = index);
+      return;
+    }
+
+    final feeder = context.read<FeederProvider>();
+    final allowed = await feeder.verifyCameraAccess();
+    if (!mounted) return;
+    if (allowed) {
+      setState(() => _index = index);
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(feeder.cameraAccessMessage)));
   }
 }

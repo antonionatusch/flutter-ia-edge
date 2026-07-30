@@ -11,26 +11,33 @@ class CameraScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final feeder = context.watch<FeederProvider>();
+    if (!feeder.cameraAccessAllowed) {
+      return _CameraLocked(message: feeder.cameraAccessMessage);
+    }
     final hasLiveFrame = feeder.streamFrame != null && feeder.streamConnected;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
         Text(
-          'Camera lab',
+          'Laboratorio de cámara',
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(
-          'Live RGB565 stream and model results',
+          'Transmisión RGB565 y resultados del modelo',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 18),
-        if (feeder.error != null) ...[
-          ErrorBanner(message: feeder.error!),
+        if (feeder.connectionMessage != null) ...[
+          ConnectionBanner(
+            message: feeder.connectionMessage!,
+            loading: feeder.connectionPhase == ConnectionPhase.connecting,
+            success: feeder.connectionPhase == ConnectionPhase.success,
+          ),
           const SizedBox(height: 14),
         ],
         AspectRatio(
@@ -69,9 +76,7 @@ class CameraScreen extends StatelessWidget {
                 icon: Icon(
                   feeder.streamConnected ? Icons.stop : Icons.play_arrow,
                 ),
-                label: Text(
-                  feeder.streamConnected ? 'Stop live' : 'Start live',
-                ),
+                label: Text(feeder.streamConnected ? 'Detener' : 'Ver en vivo'),
               ),
             ),
             const SizedBox(width: 10),
@@ -86,7 +91,7 @@ class CameraScreen extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.center_focus_strong),
-                label: const Text('Capture'),
+                label: const Text('Capturar'),
               ),
             ),
           ],
@@ -95,7 +100,7 @@ class CameraScreen extends StatelessWidget {
         _ClassificationCard(),
         const SizedBox(height: 12),
         Text(
-          'Starting live view switches the master to manual_on. Stop the stream and select Off or Auto from Status when finished.',
+          'La transmisión solo funciona durante una ronda automática activa o en modo manual encendido.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -121,7 +126,7 @@ class _CameraPlaceholder extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'No frame yet',
+            'Aún no hay una imagen',
             style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
           ),
         ],
@@ -142,12 +147,12 @@ class _ClassificationCard extends StatelessWidget {
           children: [
             const SectionHeading(
               icon: Icons.auto_awesome,
-              title: 'Classification',
+              title: 'Clasificación',
             ),
             const SizedBox(height: 14),
             if (result == null)
               Text(
-                'Capture a frame or start live view to see a prediction.',
+                'Captura una imagen o inicia la transmisión para ver una predicción.',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -157,7 +162,7 @@ class _ClassificationCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      result.predictedClass.replaceAll('_', ' '),
+                      translateClassName(result.predictedClass),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -178,7 +183,7 @@ class _ClassificationCard extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 112,
-                      child: Text(score.key.replaceAll('_', ' ')),
+                      child: Text(translateClassName(score.key)),
                     ),
                     Expanded(
                       child: LinearProgressIndicator(value: score.value),
@@ -194,6 +199,45 @@ class _ClassificationCard extends StatelessWidget {
               ],
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraLocked extends StatelessWidget {
+  const _CameraLocked({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.lock_clock_outlined,
+                  size: 54,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Cámara no disponible',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 10),
+                Text(message, textAlign: TextAlign.center),
+              ],
+            ),
+          ),
         ),
       ),
     );

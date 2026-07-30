@@ -57,7 +57,7 @@ class StatusCard extends StatelessWidget {
                   child: SectionHeading(icon: icon, title: title),
                 ),
                 StatusPill(
-                  label: online ? 'Online' : 'Offline',
+                  label: online ? 'En línea' : 'Desconectado',
                   active: online,
                 ),
               ],
@@ -166,6 +166,62 @@ class ErrorBanner extends StatelessWidget {
   }
 }
 
+class ConnectionBanner extends StatelessWidget {
+  const ConnectionBanner({
+    super.key,
+    required this.message,
+    required this.loading,
+    required this.success,
+  });
+
+  final String message;
+  final bool loading;
+  final bool success;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final background = loading
+        ? scheme.secondaryContainer
+        : success
+        ? const Color(0xFFDCEFE7)
+        : scheme.errorContainer;
+    final foreground = loading
+        ? scheme.onSecondaryContainer
+        : success
+        ? const Color(0xFF145743)
+        : scheme.onErrorContainer;
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            if (loading)
+              SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: foreground,
+                ),
+              )
+            else
+              Icon(
+                success ? Icons.check_circle_outline : Icons.error_outline,
+                color: foreground,
+              ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(message, style: TextStyle(color: foreground)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 String formatUptime(int? milliseconds) {
   if (milliseconds == null) return '--';
   final duration = Duration(milliseconds: milliseconds);
@@ -177,3 +233,25 @@ String formatUptime(int? milliseconds) {
   }
   return '${duration.inMinutes}m';
 }
+
+String translateResetReason(String? reason) => switch (reason) {
+  'power_on' => 'Encendido',
+  'brownout' => 'Caída de voltaje',
+  'software' => 'Software',
+  'external' => 'Externo',
+  'panic' => 'Error crítico',
+  'interrupt_watchdog' ||
+  'task_watchdog' ||
+  'watchdog' => 'Temporizador de vigilancia',
+  'deep_sleep' => 'Sueño profundo',
+  null => '--',
+  _ => 'Desconocido',
+};
+
+String translateClassName(String name) => switch (name) {
+  'empty' => 'vacío',
+  'food_available' => 'alimento disponible',
+  'unknown' => 'desconocido',
+  'not_classified' => 'sin clasificar',
+  _ => name.replaceAll('_', ' '),
+};

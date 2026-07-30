@@ -39,21 +39,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
         Text(
-          'Connection',
+          'Conexión',
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text(
-          'Backend access for this device',
+          'Acceso al servidor desde este dispositivo',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 18),
-        if (feeder.error != null) ...[
-          ErrorBanner(message: feeder.error!),
+        if (feeder.connectionMessage != null) ...[
+          ConnectionBanner(
+            message: feeder.connectionMessage!,
+            loading: feeder.connectionPhase == ConnectionPhase.connecting,
+            success: feeder.connectionPhase == ConnectionPhase.success,
+          ),
           const SizedBox(height: 14),
         ],
         Card(
@@ -66,21 +70,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   const SectionHeading(
                     icon: Icons.dns_outlined,
-                    title: 'FastAPI backend',
+                    title: 'Servidor FastAPI',
                   ),
                   const SizedBox(height: 18),
                   TextFormField(
                     controller: _urlController,
                     keyboardType: TextInputType.url,
                     decoration: const InputDecoration(
-                      labelText: 'Backend URL',
+                      labelText: 'URL del servidor',
                       hintText: 'http://100.x.x.x:7890',
                       prefixIcon: Icon(Icons.link),
                     ),
                     validator: (value) {
                       final uri = Uri.tryParse(value?.trim() ?? '');
                       if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
-                        return 'Enter a complete http:// or https:// URL';
+                        return 'Ingresa una URL completa con http:// o https://';
                       }
                       return null;
                     },
@@ -92,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     autocorrect: false,
                     enableSuggestions: false,
                     decoration: InputDecoration(
-                      labelText: 'Backend API token',
+                      labelText: 'Token de acceso del servidor',
                       prefixIcon: const Icon(Icons.key),
                       suffixIcon: IconButton(
                         onPressed: () =>
@@ -103,7 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Token is required'
+                        ? 'El token es obligatorio'
                         : null,
                   ),
                   const SizedBox(height: 18),
@@ -121,14 +125,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               SnackBar(
                                 content: Text(
                                   feeder.error == null
-                                      ? 'Connection saved and verified'
-                                      : 'Saved, but verification failed',
+                                      ? 'Conexión guardada y verificada'
+                                      : 'Se guardó, pero no se pudo verificar',
                                 ),
                               ),
                             );
                           },
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('Save and test'),
+                    label: const Text('Guardar y probar'),
                   ),
                 ],
               ),
@@ -137,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 14),
         Text(
-          'The token is stored in Android app preferences. For development, it can also be injected with --dart-define=BACKEND_API_TOKEN=...',
+          'El token se guarda en las preferencias de la aplicación. Los valores iniciales se cargan desde el archivo .env.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
