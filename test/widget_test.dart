@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,5 +19,9 @@ void main() {
     expect(find.text('Estado'), findsOneWidget);
     expect(find.text('Cámara'), findsOneWidget);
     expect(find.text('Configuración'), findsOneWidget);
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await tester.pumpAndSettle();
+    expect(find.text('Rondas recientes'), findsOneWidget);
+    expect(find.text('Todavía no hay rondas registradas.'), findsOneWidget);
   });
 }

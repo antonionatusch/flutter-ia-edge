@@ -131,3 +131,39 @@ class SystemStatus {
   final String? masterError;
   final String? cameraError;
 }
+
+class FeedingRound {
+  const FeedingRound({
+    required this.id,
+    required this.scheduledAt,
+    required this.source,
+    required this.status,
+    required this.result,
+    required this.confidence,
+    required this.sampleCount,
+    required this.validSampleCount,
+    required this.error,
+  });
+
+  factory FeedingRound.fromJson(Map<String, dynamic> json) => FeedingRound(
+    id: (json['id'] as num).toInt(),
+    scheduledAt: DateTime.parse(json['scheduled_at'] as String),
+    source: json['source'] as String? ?? 'automatic',
+    status: json['status'] as String? ?? 'pending',
+    result: json['result'] as String?,
+    confidence: (json['confidence'] as num?)?.toDouble(),
+    sampleCount: (json['sample_count'] as num?)?.toInt() ?? 0,
+    validSampleCount: (json['valid_sample_count'] as num?)?.toInt() ?? 0,
+    error: json['error'] as String?,
+  );
+
+  final int id;
+  final DateTime scheduledAt;
+  final String source;
+  final String status;
+  final String? result;
+  final double? confidence;
+  final int sampleCount;
+  final int validSampleCount;
+  final String? error;
+}

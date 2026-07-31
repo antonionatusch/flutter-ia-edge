@@ -21,6 +21,17 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final feeder = context.watch<FeederProvider>();
+    if (feeder.pendingNotificationMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final notification = feeder.takePendingNotification();
+        if (notification == null) return;
+        setState(() => _index = 0);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notification.message)));
+      });
+    }
     if (_index == 1 && feeder.master != null && !feeder.cameraAccessAllowed) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _index != 1) return;

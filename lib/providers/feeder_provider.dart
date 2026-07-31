@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/io.dart';
 
@@ -12,6 +13,13 @@ import '../services/notification_registration_service.dart';
 enum ConnectionPhase { idle, connecting, success, error }
 
 class FeederProvider extends ChangeNotifier {
+  FeederProvider() {
+    _notificationRegistration = NotificationRegistrationService(
+      onForegroundMessage: _handleNotification,
+      onNotificationOpened: _handleNotification,
+    );
+  }
+
   static const _urlKey = 'backend_url';
   static const _tokenKey = 'backend_api_token';
 
@@ -30,12 +38,14 @@ class FeederProvider extends ChangeNotifier {
   bool loading = false;
   bool cameraBusy = false;
   bool streamConnected = false;
+  List<FeedingRound> rounds = const [];
+  String? pendingNotificationMessage;
+  int? pendingNotificationRoundId;
 
   IOWebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _masterStatusTimer;
-  final NotificationRegistrationService _notificationRegistration =
-      NotificationRegistrationService();
+  late final NotificationRegistrationService _notificationRegistration;
 
   BackendApi get _api => BackendApi(baseUrl: backendUrl, apiToken: apiToken);
   bool get cameraAccessAllowed =>
@@ -119,6 +129,17 @@ class FeederProvider extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+    }
+    await refreshRecentRounds();
+  }
+
+  Future<void> refreshRecentRounds() async {
+    if (apiToken.isEmpty) return;
+    try {
+      rounds = await _api.recentRounds();
+      notifyListeners();
+    } catch (_) {
+      // Device controls remain usable while an older backend is being upgraded.
     }
   }
 
@@ -221,6 +242,16 @@ class FeederProvider extends ChangeNotifier {
       camera = await _api.cameraStatus();
       connectionPhase = ConnectionPhase.success;
       connectionMessage = 'Imagen clasificada correctamente.';
+      try {
+        final scheduled = await _api.scheduleDebugNotification(classification!);
+        if (scheduled) {
+          connectionMessage =
+              'Imagen clasificada. La notificación de prueba llegará en unos 5 segundos.';
+          await refreshRecentRounds();
+        }
+      } catch (_) {
+        // Debug notifications are best-effort and never invalidate a classification.
+      }
     } catch (exception) {
       error = exception is BackendException
           ? exception.message
@@ -231,6 +262,29 @@ class FeederProvider extends ChangeNotifier {
       cameraBusy = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _handleNotification(RemoteMessage message) async {
+    if (message.data['type'] != 'round_result') return;
+    pendingNotificationRoundId = int.tryParse(
+      message.data['round_id']?.toString() ?? '',
+    );
+    pendingNotificationMessage =
+        message.notification?.body ?? 'Se completó una ronda de clasificación.';
+    await refreshRecentRounds();
+    notifyListeners();
+  }
+
+  ({String message, int? roundId})? takePendingNotification() {
+    final message = pendingNotificationMessage;
+    if (message == null) return null;
+    final notification = (
+      message: message,
+      roundId: pendingNotificationRoundId,
+    );
+    pendingNotificationMessage = null;
+    pendingNotificationRoundId = null;
+    return notification;
   }
 
   Future<void> startStream() async {

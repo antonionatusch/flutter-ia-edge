@@ -1,68 +1,104 @@
 # Plan de implementación de notificaciones
 
-## Estado actual
+## Estado
 
-El sistema todavía no está preparado para enviar notificaciones durante las rondas automáticas:
+La implementación está completa en código y pendiente de despliegue/prueba con
+el servidor y el teléfono reales.
 
-- El backend solo actúa como proxy y no ejecuta rondas de clasificación programadas.
-- Ya existe persistencia SQLite para dispositivos móviles, pero no para resultados ni rondas.
-- Firebase Admin y Firebase Cloud Messaging (FCM) ya están configurados como base.
-- La aplicación Flutter solicita permiso, registra su token FCM y actualiza sus renovaciones; todavía no gestiona la apertura de notificaciones.
+Implementado:
 
-## Comportamiento propuesto
+- Registro y renovación de tokens FCM por `installation_id`.
+- Firebase Admin con credencial montada fuera de la imagen Docker.
+- Persistencia SQLite de dispositivos, rondas, muestras y entregas FCM.
+- Planificador automático con zona horaria `America/La_Paz`.
+- Cinco clasificaciones por ronda y voto mayoritario.
+- Historial de rondas en Flutter.
+- Recepción de mensajes en primer plano, segundo plano y app cerrada.
+- Modo debug que notifica cinco segundos después de una clasificación manual.
+- Desactivación de tokens que Firebase reporte como no registrados.
 
-1. En cada ronda automática, el backend espera a que el maestro encienda la cámara.
-2. Ejecuta cinco capturas y clasificaciones separadas durante la ventana activa.
-3. Obtiene el resultado final mediante voto mayoritario, guardando también las puntuaciones y los errores.
-4. Envía una notificación únicamente cuando el resultado final sea relevante:
-   - `vacío`: avisar que puede faltar alimento.
-   - `alimento disponible`: registrar la ronda sin alerta urgente, salvo preferencia del usuario.
-   - `desconocido` o `sin clasificar`: avisar solo después de varias rondas consecutivas inconclusas.
-5. La notificación abre el detalle de la ronda dentro de la aplicación.
+## Rondas automáticas
 
-## Backend
+1. APScheduler dispara una ronda a las `hh:00:00`, desde las 08:00 hasta las
+   22:00, hora Bolivia.
+2. El maestro ya debe haber activado el relé a `hh:59:30`.
+3. El backend confirma que el modo sea `automatic` y que `relay_enabled` sea
+   verdadero.
+4. Ejecuta cinco operaciones atómicas `capture-classify`, separadas por 45
+   segundos.
+5. Guarda cada resultado o error individual.
+6. Calcula el voto mayoritario. Un empate o la ausencia de muestras válidas se
+   resuelve como `unknown`.
+7. Guarda el resultado final y envía FCM a todos los dispositivos habilitados.
 
-1. Añadir una base de datos, inicialmente SQLite con migraciones, para almacenar:
-   - rondas y sus horarios;
-   - clasificaciones individuales;
-   - resultado por voto mayoritario;
-   - tokens FCM por dispositivo;
-   - preferencias de notificación;
-   - historial de envíos y errores.
-2. Implementar un planificador persistente, por ejemplo APScheduler, con zona horaria `America/La_Paz`.
-3. Evitar duplicados usando una clave única por fecha y hora de ronda.
-4. Crear un trabajador de ronda que confirme `relay_enabled`, espere a la cámara y ejecute cinco clasificaciones con reintentos limitados.
-5. Integrar Firebase Admin SDK y almacenar sus credenciales fuera del repositorio.
-6. Añadir endpoints autenticados:
-   - `POST /api/v1/notifications/devices` para registrar o renovar un token FCM;
-   - `DELETE /api/v1/notifications/devices/{id}` para cerrar sesión o retirar un dispositivo;
-   - `GET/PUT /api/v1/notifications/preferences`;
-   - `GET /api/v1/rounds` y `GET /api/v1/rounds/{id}`.
-7. Eliminar tokens inválidos cuando FCM indique que ya no están registrados.
+La clave única `scheduled_at` evita duplicar una ronda. Si el contenedor se
+reinicia durante los primeros dos minutos de una ventana activa, intenta
+recuperar la ronda. Una ronda interrumpida vuelve a empezar sus muestras; una
+ronda completada no se vuelve a clasificar.
+
+## Modo debug
+
+El modo debug permite verificar FCM sin esperar una ronda automática:
+
+1. Seleccionar `Manual encendido` en Flutter.
+2. Entrar a Cámara y pulsar `Capturar y clasificar`.
+3. Flutter envía el resultado a `POST /api/v1/notifications/debug`.
+4. El backend guarda una ronda con `source=debug`.
+5. Cinco segundos después envía una notificación con el resultado.
+
+Configuración:
+
+```dotenv
+NOTIFICATION_DEBUG_ENABLED=true
+NOTIFICATION_DEBUG_DELAY_SECONDS=5
+```
+
+Después de validar el sistema, desactivar el modo sin retirar código:
+
+```dotenv
+NOTIFICATION_DEBUG_ENABLED=false
+```
+
+Un error al programar la notificación debug no invalida la clasificación
+manual.
+
+## API
+
+- `POST /api/v1/notifications/devices`: registra o renueva un token.
+- `GET /api/v1/notifications/status`: estado de Firebase, scheduler y debug.
+- `POST /api/v1/notifications/debug`: programa la prueba manual.
+- `GET /api/v1/rounds`: historial paginado por límite.
+- `GET /api/v1/rounds/{id}`: ronda y muestras individuales.
+
+Todos requieren `X-API-Key`, excepto `/health`.
 
 ## Flutter Android
 
-1. Configurar un proyecto Firebase Android y añadir `google-services.json` fuera de datos sensibles.
-2. Incorporar `firebase_core`, `firebase_messaging` y `flutter_local_notifications`.
-3. Solicitar permiso de notificaciones en Android 13 o superior con una explicación previa.
-4. Registrar el token FCM en el backend y actualizarlo mediante `onTokenRefresh`.
-5. Mostrar notificaciones recibidas en primer plano mediante notificaciones locales.
-6. Implementar navegación profunda al detalle de la ronda al tocar una notificación.
-7. Añadir una pantalla de preferencias para activar o desactivar categorías de alertas.
+- Las notificaciones con la app en segundo plano o cerrada son mostradas por
+  Android mediante el payload `notification` de FCM.
+- En primer plano, Flutter recibe `FirebaseMessaging.onMessage`, actualiza el
+  historial y muestra un `SnackBar` dentro de la app.
+- Al tocar una notificación, la aplicación vuelve al panel y actualiza las
+  rondas recientes.
+- No se usa `flutter_local_notifications`; por eso no aparece un banner del
+  sistema mientras la app está abierta.
 
-## Fiabilidad y pruebas
+## Pendiente después del despliegue
 
-1. Probar el voto mayoritario, reintentos, rondas duplicadas y cámara fuera de línea.
-2. Probar tokens FCM inválidos y fallos temporales de Firebase.
-3. Verificar reinicios del contenedor durante una ronda sin repetir notificaciones.
-4. Probar recepción con la aplicación abierta, en segundo plano y cerrada.
-5. Registrar métricas mínimas: duración de ronda, número de capturas válidas y estado de entrega.
+1. Copiar la cuenta de servicio al servidor y reconstruir el contenedor.
+2. Instalar el APK actualizado y aceptar el permiso de notificaciones.
+3. Confirmar que `/api/v1/notifications/status` reporte Firebase configurado y
+   al menos un dispositivo.
+4. Ejecutar una clasificación manual y validar la notificación a los cinco
+   segundos.
+5. Ejecutar una ronda automática real y validar cinco muestras, mayoría e
+   historial.
+6. Desactivar `NOTIFICATION_DEBUG_ENABLED` al finalizar las pruebas.
 
-## Orden recomendado
+## Mejoras futuras
 
-1. ~~Registro persistente de dispositivos e integración base FCM.~~
-2. Persistencia e historial de rondas.
-3. Planificador y clasificación por voto mayoritario.
-4. Preferencias y envío FCM desde el backend.
-5. Recepción Android y navegación profunda.
-6. Pruebas de extremo a extremo con hardware real.
+- Preferencias por dispositivo para elegir qué resultados notifican.
+- Endpoint para retirar dispositivos.
+- Pantalla detallada de muestras de cada ronda.
+- Métricas de latencia y panel de entregas fallidas.
+- Autenticación por usuario si el backend se expone fuera de la red privada.

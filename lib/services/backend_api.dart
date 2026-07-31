@@ -122,6 +122,29 @@ class BackendApi {
     );
   }
 
+  Future<List<FeedingRound>> recentRounds({int limit = 10}) async {
+    final response = await _jsonRequest('GET', '/api/v1/rounds?limit=$limit');
+    final items = response['items'] as List<dynamic>? ?? const [];
+    return items
+        .map((item) => FeedingRound.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<bool> scheduleDebugNotification(
+    ClassificationResult classification,
+  ) async {
+    final response = await _jsonRequest(
+      'POST',
+      '/api/v1/notifications/debug',
+      body: {
+        'predicted_class': classification.predictedClass,
+        'confidence': classification.confidence,
+        'frame_id': classification.frameId,
+      },
+    );
+    return response['scheduled'] as bool? ?? false;
+  }
+
   Future<MasterStatus> setMode(String mode) async => MasterStatus.fromJson(
     await _jsonRequest('POST', '/api/v1/master/mode', body: {'mode': mode}),
   );

@@ -71,6 +71,8 @@ class DashboardScreen extends StatelessWidget {
                 _MasterCard(status: feeder.master),
                 const SizedBox(height: 14),
                 _CameraCard(status: feeder.camera),
+                const SizedBox(height: 14),
+                _RoundsCard(rounds: feeder.rounds),
               ],
             ),
           ),
@@ -78,6 +80,79 @@ class DashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RoundsCard extends StatelessWidget {
+  const _RoundsCard({required this.rounds});
+
+  final List<FeedingRound> rounds;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeading(
+              icon: Icons.history,
+              title: 'Rondas recientes',
+            ),
+            const SizedBox(height: 12),
+            if (rounds.isEmpty)
+              Text(
+                'Todavía no hay rondas registradas.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            else
+              ...rounds.take(6).map((round) => _RoundTile(round: round)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundTile extends StatelessWidget {
+  const _RoundTile({required this.round});
+
+  final FeedingRound round;
+
+  @override
+  Widget build(BuildContext context) {
+    final localTime = round.scheduledAt.toLocal();
+    final minute = localTime.minute.toString().padLeft(2, '0');
+    final result = round.result == null
+        ? _roundStatus(round.status)
+        : translateClassName(round.result!);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: CircleAvatar(
+        child: Icon(
+          round.source == 'debug' ? Icons.bug_report : Icons.schedule,
+        ),
+      ),
+      title: Text(result),
+      subtitle: Text(
+        '${localTime.day}/${localTime.month} ${localTime.hour}:$minute · '
+        '${round.validSampleCount}/${round.sampleCount} muestras válidas',
+      ),
+      trailing: round.confidence == null
+          ? null
+          : Text('${(round.confidence! * 100).toStringAsFixed(0)}%'),
+    );
+  }
+
+  String _roundStatus(String status) => switch (status) {
+    'pending' => 'Pendiente',
+    'running' => 'En curso',
+    'skipped' => 'Omitida',
+    'failed' => 'Fallida',
+    _ => 'Sin resultado',
+  };
 }
 
 class _ModeCard extends StatelessWidget {

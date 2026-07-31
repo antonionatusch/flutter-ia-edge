@@ -12,6 +12,8 @@ class NotificationRegistrationService {
   NotificationRegistrationService({
     FirebaseMessaging? messaging,
     Logger? logger,
+    this.onForegroundMessage,
+    this.onNotificationOpened,
   }) : _providedMessaging = messaging,
        _logger = logger ?? Logger();
 
@@ -19,8 +21,13 @@ class NotificationRegistrationService {
 
   final FirebaseMessaging? _providedMessaging;
   final Logger _logger;
+  final Future<void> Function(RemoteMessage message)? onForegroundMessage;
+  final Future<void> Function(RemoteMessage message)? onNotificationOpened;
   BackendApi? _api;
   StreamSubscription<String>? _tokenSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundSubscription;
+  StreamSubscription<RemoteMessage>? _openedSubscription;
+  bool _initialMessageHandled = false;
 
   FirebaseMessaging get _messaging =>
       _providedMessaging ?? FirebaseMessaging.instance;
@@ -38,6 +45,7 @@ class NotificationRegistrationService {
         return;
       }
 
+      await _ensureMessageListeners();
       final token = await _messaging.getToken();
       if (token == null) {
         _logger.w('Firebase no entregó un token FCM.');
@@ -45,9 +53,6 @@ class NotificationRegistrationService {
       }
 
       await _registerToken(token);
-      _tokenSubscription ??= _messaging.onTokenRefresh.listen(
-        (token) => unawaited(_registerRefreshedToken(token)),
-      );
     } catch (error, stackTrace) {
       _logger.e(
         'No se pudo registrar este dispositivo para notificaciones.',
@@ -55,6 +60,31 @@ class NotificationRegistrationService {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  Future<void> _ensureMessageListeners() async {
+    _tokenSubscription ??= _messaging.onTokenRefresh.listen(
+      (token) => unawaited(_registerRefreshedToken(token)),
+    );
+    _foregroundSubscription ??= FirebaseMessaging.onMessage.listen(
+      (message) => unawaited(_handleForegroundMessage(message)),
+    );
+    _openedSubscription ??= FirebaseMessaging.onMessageOpenedApp.listen(
+      (message) => unawaited(_handleOpenedMessage(message)),
+    );
+    if (!_initialMessageHandled) {
+      _initialMessageHandled = true;
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) await _handleOpenedMessage(initialMessage);
+    }
+  }
+
+  Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    await onForegroundMessage?.call(message);
+  }
+
+  Future<void> _handleOpenedMessage(RemoteMessage message) async {
+    await onNotificationOpened?.call(message);
   }
 
   Future<void> _registerRefreshedToken(String token) async {
@@ -94,5 +124,7 @@ class NotificationRegistrationService {
 
   Future<void> dispose() async {
     await _tokenSubscription?.cancel();
+    await _foregroundSubscription?.cancel();
+    await _openedSubscription?.cancel();
   }
 }
