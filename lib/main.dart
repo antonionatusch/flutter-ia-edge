@@ -5,21 +5,29 @@ import 'package:provider/provider.dart';
 
 import 'providers/feeder_provider.dart';
 import 'screens/home_shell.dart';
+import 'services/local_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
   await Firebase.initializeApp();
-  runApp(const FeederApp());
+
+  final localNotifications = LocalNotificationService();
+  await localNotifications.initialize(onSelectNotification: (_) {});
+
+  runApp(FeederApp(localNotifications: localNotifications));
 }
 
 class FeederApp extends StatelessWidget {
-  const FeederApp({super.key});
+  const FeederApp({super.key, required this.localNotifications});
+
+  final LocalNotificationService localNotifications;
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => FeederProvider()..initialize(),
+      create: (_) =>
+          FeederProvider(localNotifications: localNotifications)..initialize(),
       child: MaterialApp(
         title: 'Comedero IA Edge',
         debugShowCheckedModeBanner: false,

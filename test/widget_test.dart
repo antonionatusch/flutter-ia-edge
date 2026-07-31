@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_ia_edge/main.dart';
+import 'package:flutter_ia_edge/services/local_notification_service.dart';
 
 void main() {
   testWidgets('muestra el panel y la navegación principal', (tester) async {
@@ -12,7 +13,8 @@ void main() {
       envString: 'BACKEND_URL=http://localhost:7890\nBACKEND_API_TOKEN=',
     );
 
-    await tester.pumpWidget(const FeederApp());
+    final localNotifications = LocalNotificationService();
+    await tester.pumpWidget(FeederApp(localNotifications: localNotifications));
     await tester.pumpAndSettle();
 
     expect(find.text('Comedero inteligente'), findsOneWidget);

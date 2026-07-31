@@ -8,13 +8,15 @@ import 'package:web_socket_channel/io.dart';
 import '../models/device_models.dart';
 import '../services/backend_api.dart';
 import '../services/env_service.dart';
+import '../services/local_notification_service.dart';
 import '../services/notification_registration_service.dart';
 
 enum ConnectionPhase { idle, connecting, success, error }
 
 class FeederProvider extends ChangeNotifier {
-  FeederProvider() {
+  FeederProvider({LocalNotificationService? localNotifications}) {
     _notificationRegistration = NotificationRegistrationService(
+      localNotifications: localNotifications,
       onForegroundMessage: _handleNotification,
       onNotificationOpened: _handleNotification,
     );

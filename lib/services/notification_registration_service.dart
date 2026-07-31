@@ -7,20 +7,23 @@ import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'backend_api.dart';
+import 'local_notification_service.dart';
 
 class NotificationRegistrationService {
   NotificationRegistrationService({
     FirebaseMessaging? messaging,
     Logger? logger,
+    LocalNotificationService? localNotifications,
     this.onForegroundMessage,
     this.onNotificationOpened,
   }) : _providedMessaging = messaging,
-       _logger = logger ?? Logger();
-
+       _logger = logger ?? Logger(),
+       _localNotifications = localNotifications;
   static const _installationIdKey = 'notification_installation_id';
 
   final FirebaseMessaging? _providedMessaging;
   final Logger _logger;
+  final LocalNotificationService? _localNotifications;
   final Future<void> Function(RemoteMessage message)? onForegroundMessage;
   final Future<void> Function(RemoteMessage message)? onNotificationOpened;
   BackendApi? _api;
@@ -80,6 +83,16 @@ class NotificationRegistrationService {
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification != null) {
+      final payload = jsonEncode(message.data);
+      await _localNotifications?.showNotification(
+        id: message.hashCode,
+        title: notification.title ?? 'Comedero IA Edge',
+        body: notification.body ?? '',
+        payload: payload,
+      );
+    }
     await onForegroundMessage?.call(message);
   }
 
