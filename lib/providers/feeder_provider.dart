@@ -148,6 +148,22 @@ class FeederProvider extends ChangeNotifier {
   Future<FeedingRoundDetail> fetchRoundDetail(int roundId) =>
       _api.getRoundDetail(roundId);
 
+  Future<MasterStatus?> fetchMasterStatus() async {
+    try {
+      return await _api.masterStatus();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<CameraStatus?> fetchCameraStatus() async {
+    try {
+      return await _api.cameraStatus();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> setMode(String mode) async {
     loading = true;
     error = null;

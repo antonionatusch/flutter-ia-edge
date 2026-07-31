@@ -16,6 +16,8 @@ class RoundDetailScreen extends StatefulWidget {
 
 class _RoundDetailScreenState extends State<RoundDetailScreen> {
   FeedingRoundDetail? _detail;
+  MasterStatus? _master;
+  CameraStatus? _camera;
   String? _error;
   bool _loading = true;
 
@@ -32,10 +34,16 @@ class _RoundDetailScreenState extends State<RoundDetailScreen> {
     });
     try {
       final feeder = context.read<FeederProvider>();
-      final detail = await feeder.fetchRoundDetail(widget.roundId);
+      final results = await Future.wait([
+        feeder.fetchRoundDetail(widget.roundId),
+        feeder.fetchMasterStatus(),
+        feeder.fetchCameraStatus(),
+      ]);
       if (mounted) {
         setState(() {
-          _detail = detail;
+          _detail = results[0] as FeedingRoundDetail;
+          _master = results[1] as MasterStatus?;
+          _camera = results[2] as CameraStatus?;
           _loading = false;
         });
       }
@@ -113,6 +121,59 @@ class _RoundDetailScreenState extends State<RoundDetailScreen> {
                         child: _ClassificationCard(classification: c),
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  const SectionHeading(
+                    icon: Icons.memory,
+                    title: 'Estado del sistema',
+                  ),
+                  const SizedBox(height: 12),
+                  _DeviceStatusCard(
+                    title: 'ESP32 maestro',
+                    icon: Icons.memory,
+                    online: _master != null,
+                    rows: [
+                      StatusRow('Modo', _modeLabel(_master?.mode)),
+                      StatusRow(
+                        'Relé',
+                        _master?.relayEnabled == true ? 'Encendido' : 'Apagado',
+                      ),
+                      StatusRow(
+                        'Wi-Fi',
+                        _master == null ? '--' : '${_master!.wifiRssi} dBm',
+                      ),
+                      StatusRow('Hora', _master?.localTime ?? 'No disponible'),
+                      StatusRow(
+                        'Tiempo activo',
+                        formatUptime(_master?.uptimeMs),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _DeviceStatusCard(
+                    title: 'ESP32-CAM',
+                    icon: Icons.photo_camera_outlined,
+                    online: _camera != null && _camera!.cameraReady,
+                    rows: [
+                      StatusRow(
+                        'Modelo IA',
+                        _camera?.modelReady == true ? 'Listo' : 'No disponible',
+                      ),
+                      StatusRow(
+                        'Wi-Fi',
+                        _camera == null ? '--' : '${_camera!.wifiRssi} dBm',
+                      ),
+                      StatusRow(
+                        'Memoria',
+                        _camera == null
+                            ? '--'
+                            : '${(_camera!.freePsram / 1048576).toStringAsFixed(1)} MB PSRAM',
+                      ),
+                      StatusRow(
+                        'Tiempo activo',
+                        formatUptime(_camera?.uptimeMs),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -469,6 +530,90 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+String _modeLabel(String? mode) => switch (mode) {
+  'automatic' => 'Automático',
+  'manual_on' => 'Manual encendido',
+  'manual_off' => 'Manual apagado',
+  _ => 'No disponible',
+};
+
+class _DeviceStatusCard extends StatelessWidget {
+  const _DeviceStatusCard({
+    required this.title,
+    required this.icon,
+    required this.online,
+    required this.rows,
+  });
+
+  final String title;
+  final IconData icon;
+  final bool online;
+  final List<StatusRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: scheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                StatusPill(
+                  label: online ? 'En línea' : 'Sin conexión',
+                  active: online,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...rows.map((row) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        row.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        row.value,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
