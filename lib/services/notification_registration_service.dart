@@ -18,7 +18,9 @@ class NotificationRegistrationService {
     this.onNotificationOpened,
   }) : _providedMessaging = messaging,
        _logger = logger ?? Logger(),
+       // ignore: prefer_initializing_formals
        _localNotifications = localNotifications;
+
   static const _installationIdKey = 'notification_installation_id';
 
   final FirebaseMessaging? _providedMessaging;
