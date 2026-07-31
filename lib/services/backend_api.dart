@@ -130,6 +130,11 @@ class BackendApi {
         .toList();
   }
 
+  Future<FeedingRoundDetail> getRoundDetail(int roundId) async =>
+      FeedingRoundDetail.fromJson(
+        await _jsonRequest('GET', '/api/v1/rounds/$roundId'),
+      );
+
   Future<bool> scheduleDebugNotification(
     ClassificationResult classification,
   ) async {

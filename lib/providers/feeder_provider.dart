@@ -145,6 +145,9 @@ class FeederProvider extends ChangeNotifier {
     }
   }
 
+  Future<FeedingRoundDetail> fetchRoundDetail(int roundId) =>
+      _api.getRoundDetail(roundId);
+
   Future<void> setMode(String mode) async {
     loading = true;
     error = null;

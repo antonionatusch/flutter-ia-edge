@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 class MasterStatus {
@@ -130,6 +131,74 @@ class SystemStatus {
   final CameraStatus? camera;
   final String? masterError;
   final String? cameraError;
+}
+
+class RoundClassification {
+  const RoundClassification({
+    required this.sampleIndex,
+    this.predictedClass,
+    this.confidence,
+    this.frameId,
+    this.error,
+    this.createdAt,
+    this.scores,
+  });
+
+  factory RoundClassification.fromJson(Map<String, dynamic> json) {
+    Map<String, double>? scores;
+    final rawJson = json['raw_json'];
+    if (rawJson is String && rawJson.isNotEmpty) {
+      try {
+        final parsed = jsonDecode(rawJson) as Map<String, dynamic>;
+        final rawScores = parsed['scores'] as Map<String, dynamic>?;
+        scores = rawScores?.map((k, v) => MapEntry(k, (v as num).toDouble()));
+      } catch (_) {}
+    } else if (rawJson is Map<String, dynamic>) {
+      final rawScores = rawJson['scores'] as Map<String, dynamic>?;
+      scores = rawScores?.map((k, v) => MapEntry(k, (v as num).toDouble()));
+    }
+    return RoundClassification(
+      sampleIndex: (json['sample_index'] as num?)?.toInt() ?? 0,
+      predictedClass: json['predicted_class'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble(),
+      frameId: json['frame_id']?.toString(),
+      error: json['error'] as String?,
+      createdAt: json['created_at'] as String?,
+      scores: scores,
+    );
+  }
+
+  final int sampleIndex;
+  final String? predictedClass;
+  final double? confidence;
+  final String? frameId;
+  final String? error;
+  final String? createdAt;
+  final Map<String, double>? scores;
+}
+
+class FeedingRoundDetail {
+  const FeedingRoundDetail({
+    required this.round,
+    required this.classifications,
+  });
+
+  factory FeedingRoundDetail.fromJson(Map<String, dynamic> json) {
+    final classifications =
+        (json['classifications'] as List<dynamic>?)
+            ?.map(
+              (c) => RoundClassification.fromJson(c as Map<String, dynamic>),
+            )
+            .toList() ??
+        const [];
+    return FeedingRoundDetail(
+      round: FeedingRound.fromJson(json),
+      classifications: classifications,
+    );
+  }
+
+  final FeedingRound round;
+  final List<RoundClassification> classifications;
 }
 
 class FeedingRound {

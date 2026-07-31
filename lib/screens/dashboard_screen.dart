@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/device_models.dart';
 import '../providers/feeder_provider.dart';
 import '../widgets/common_widgets.dart';
+import 'round_detail_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -143,6 +144,13 @@ class _RoundTile extends StatelessWidget {
       trailing: round.confidence == null
           ? null
           : Text('${(round.confidence! * 100).toStringAsFixed(0)}%'),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RoundDetailScreen(roundId: round.id),
+          ),
+        );
+      },
     );
   }
 
