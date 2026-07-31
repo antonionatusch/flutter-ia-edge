@@ -1,13 +1,21 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
-
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'providers/feeder_provider.dart';
 import 'screens/home_shell.dart';
+
+final _log = Logger();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load();
+  await Firebase.initializeApp();
+  final token = await FirebaseMessaging.instance.getToken();
+  _log.i('FCM Token: $token');
   runApp(const FeederApp());
 }
 
