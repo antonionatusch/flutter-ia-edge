@@ -7,6 +7,7 @@ import 'package:web_socket_channel/io.dart';
 import '../models/device_models.dart';
 import '../services/backend_api.dart';
 import '../services/env_service.dart';
+import '../services/notification_registration_service.dart';
 
 enum ConnectionPhase { idle, connecting, success, error }
 
@@ -33,6 +34,8 @@ class FeederProvider extends ChangeNotifier {
   IOWebSocketChannel? _channel;
   StreamSubscription<dynamic>? _socketSubscription;
   Timer? _masterStatusTimer;
+  final NotificationRegistrationService _notificationRegistration =
+      NotificationRegistrationService();
 
   BackendApi get _api => BackendApi(baseUrl: backendUrl, apiToken: apiToken);
   bool get cameraAccessAllowed =>
@@ -53,6 +56,7 @@ class FeederProvider extends ChangeNotifier {
     initialized = true;
     notifyListeners();
     if (apiToken.isNotEmpty) {
+      unawaited(_notificationRegistration.register(_api));
       await refreshAll();
       _masterStatusTimer = Timer.periodic(
         const Duration(seconds: 15),
@@ -71,6 +75,7 @@ class FeederProvider extends ChangeNotifier {
     connectionPhase = ConnectionPhase.connecting;
     connectionMessage = 'Conectando con el sistema...';
     notifyListeners();
+    unawaited(_notificationRegistration.register(_api));
     await refreshAll();
   }
 
@@ -335,6 +340,7 @@ class FeederProvider extends ChangeNotifier {
     _masterStatusTimer?.cancel();
     _socketSubscription?.cancel();
     _channel?.sink.close();
+    unawaited(_notificationRegistration.dispose());
     super.dispose();
   }
 }

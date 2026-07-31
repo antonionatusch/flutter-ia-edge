@@ -5,9 +5,9 @@
 El sistema todavía no está preparado para enviar notificaciones durante las rondas automáticas:
 
 - El backend solo actúa como proxy y no ejecuta rondas de clasificación programadas.
-- No existe persistencia para resultados, rondas ni dispositivos móviles.
-- No hay integración con Firebase Cloud Messaging (FCM).
-- La aplicación Flutter no registra un token FCM ni gestiona permisos o apertura de notificaciones.
+- Ya existe persistencia SQLite para dispositivos móviles, pero no para resultados ni rondas.
+- Firebase Admin y Firebase Cloud Messaging (FCM) ya están configurados como base.
+- La aplicación Flutter solicita permiso, registra su token FCM y actualiza sus renovaciones; todavía no gestiona la apertura de notificaciones.
 
 ## Comportamiento propuesto
 
@@ -60,9 +60,9 @@ El sistema todavía no está preparado para enviar notificaciones durante las ro
 
 ## Orden recomendado
 
-1. Persistencia e historial de rondas.
-2. Planificador y clasificación por voto mayoritario.
-3. Registro de dispositivos y preferencias.
-4. Integración FCM en backend.
-5. Integración Android y navegación profunda.
+1. ~~Registro persistente de dispositivos e integración base FCM.~~
+2. Persistencia e historial de rondas.
+3. Planificador y clasificación por voto mayoritario.
+4. Preferencias y envío FCM desde el backend.
+5. Recepción Android y navegación profunda.
 6. Pruebas de extremo a extremo con hardware real.

@@ -107,6 +107,21 @@ class BackendApi {
   Future<SystemStatus> systemStatus() async =>
       SystemStatus.fromJson(await _jsonRequest('GET', '/api/v1/system/status'));
 
+  Future<void> registerNotificationDevice({
+    required String installationId,
+    required String fcmToken,
+  }) async {
+    await _jsonRequest(
+      'POST',
+      '/api/v1/notifications/devices',
+      body: {
+        'installation_id': installationId,
+        'fcm_token': fcmToken,
+        'platform': 'android',
+      },
+    );
+  }
+
   Future<MasterStatus> setMode(String mode) async => MasterStatus.fromJson(
     await _jsonRequest('POST', '/api/v1/master/mode', body: {'mode': mode}),
   );
